@@ -5,23 +5,21 @@
  */
 package vertigo.core.dht;
 
-import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import java.io.Serializable;
-import java.util.function.Consumer;
 import vertigo.api.function.SerializableConsumer;
 
 /**
  *
  * @author muhaaa
  */
-public class ComputeNode<K extends Serializable & Comparable<K>, T extends Serializable> extends DataNode<K, T> {
-  
-  public ComputeNode(Vertx vertx, String prefix, K myHash) {
-    super(vertx, prefix, myHash);
-  }
+public class ComputeClient<K extends Serializable & Comparable<K>, T extends Serializable> extends DataClient<K, T>{
 
-  public void execute(K key, SerializableConsumer<ComputeNode<K, ?>> value, SerializableConsumer<Throwable> callback) {
+  public ComputeClient(Vertx vertx, String prefix) {
+    super(vertx, prefix);
+  }
+  
+  public void execute(K key, SerializableConsumer<DataNode<K, ?>> value, SerializableConsumer<Throwable> callback) {
     if (callback == null) {
       callback = b -> {
       };

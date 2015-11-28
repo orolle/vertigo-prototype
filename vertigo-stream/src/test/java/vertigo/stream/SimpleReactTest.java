@@ -5,30 +5,23 @@
  */
 package vertigo.stream;
 
-import vertigo.stream.SimpleReactNode;
 import com.aol.simple.react.async.Queue;
 import com.aol.simple.react.async.factories.QueueFactories;
-import com.aol.simple.react.stream.lazy.LazyFutureStreamImpl;
 import com.aol.simple.react.stream.lazy.LazyReact;
 import com.aol.simple.react.stream.traits.LazyFutureStream;
-import io.netty.util.concurrent.CompleteFuture;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Random;
 import org.junit.After;
 import org.junit.AfterClass;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.util.Random;
-import java.util.Spliterator;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import java.util.stream.StreamSupport;
 
 /**
  *
@@ -111,19 +104,21 @@ public class SimpleReactTest {
       }
     });
 
-    new SimpleReactNode<Integer>().join(vertx, "prefix", rand.nextInt(), n1 -> {
-      new SimpleReactNode<Integer>().join(vertx, "prefix", rand.nextInt(), n2 -> {
-        SimpleReactNode<Integer> exec = new SimpleReactNode<>();
-        exec.join(vertx, "prefix", rand.nextInt(), node -> {
-          exec.<Integer>fromEventbus(rand.nextInt(), addrIn, addrOut, (stream) -> {
-            return stream.map(i -> i.toString());
-          }, f -> {
-            assertTrue(f.succeeded());
-            
-            vertx.eventBus().send(addrIn, 1);
-            vertx.eventBus().send(addrIn, 2);
-            vertx.eventBus().send(addrIn, 3);
-          });
+    new SimpleReactNode<Integer, Integer>(vertx, "prefix", rand.nextInt()).join(n1 -> {
+      new SimpleReactNode<Integer, Integer>(vertx, "prefix", rand.nextInt()).join(n2 -> {
+        SimpleReactNode<Integer, Integer> exec = new SimpleReactNode<>(vertx, "prefix", rand.nextInt());
+        exec.join(node -> {
+          exec.<Integer>fromEventbus(rand.nextInt(), addrIn, addrOut,
+            (stream) -> {
+              return stream.map(i -> i.toString());
+            },
+            (f) -> {
+              assertTrue(f.succeeded());
+
+              vertx.eventBus().send(addrIn, 1);
+              vertx.eventBus().send(addrIn, 2);
+              vertx.eventBus().send(addrIn, 3);
+            });
         });
       });
     });

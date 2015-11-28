@@ -8,14 +8,18 @@ import org.javatuples.Pair;
 
 import vertigo.api.function.AsyncFunction;
 import vertigo.api.function.ExecutionContext;
+import vertigo.api.function.SerializableConsumer;
 import vertigo.api.function.Serializer;
 
-
-public interface Dht {
+public interface IDht {
 
   public static <K extends Comparable<K>> String toAddress(String prefix, K hash) {
+    return toAddress(prefix, hash.toString());
+  }
+  
+  public static <K extends Comparable<K>> String toAddress(String prefix, String hash) {
     final StringBuffer buf = new StringBuffer();
-    buf.append(prefix).append(".").append(hash.toString());
+    buf.append(prefix).append(".").append(hash);
     return buf.toString();
   }
 
@@ -25,18 +29,17 @@ public interface Dht {
 
   public static <K extends Comparable<K>> boolean isResponsible(K my, K next, K hash) {
     // System.out.println(my+" "+next+" "+hash);
-    
+
     // continued hash range
     if (my.compareTo(next) < 0) {
       return my.compareTo(hash) <= 0 && next.compareTo(hash) > 0;
-    }
-    // discontinued hash range
+    } // discontinued hash range
     else {
       return my.compareTo(hash) <= 0 || next.compareTo(hash) > 0;
     }
   }
 
-  public static <K extends Comparable<K> & Serializable, T extends Serializable, R extends Serializable> byte[] managementMessage(
+  public static <K extends Comparable<K> & Serializable, T extends Serializable, R extends Serializable> byte[] functionToMessage(
     AsyncFunction<Pair<ExecutionContext<DataNode<K, T>, Message<byte[]>, R>, Message<byte[]>>, R> f) {
     return Serializer.serialize(f);
   }

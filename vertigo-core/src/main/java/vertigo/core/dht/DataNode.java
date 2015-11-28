@@ -1,10 +1,12 @@
 package vertigo.core.dht;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 
 import java.io.Serializable;
+import java.util.function.Consumer;
 
 import org.javatuples.Pair;
 
@@ -28,19 +30,17 @@ public class DataNode<K extends Comparable<K> & Serializable, T extends Serializ
     this.nextKey = myHash;
   }
 
-  public DataNode<K, T> join(SerializableConsumer<DataNode<K, T>> joined) {
+  public void join(Consumer<Future<Void>> joined) {
     new DataNodeBootstrap<>(this).
-      onSuccess(nextHash -> this.nextKey = nextHash).
-      onSuccess(nextHash -> onBootstraped()).
-      onSuccess(nextHash -> joined.accept(this)).
+      onSuccess(this::onBootstraped).
+      onSuccess(nextHash -> joined.accept(Future.succeededFuture(null))).
       bootstrap();
-
-    return this;
   }
 
-  protected void onBootstraped() {
-    vertx.eventBus().consumer(Dht.toAddress(prefix, 0), (Message<byte[]> msg) -> processManagementMessage(msg));
-    vertx.eventBus().consumer(Dht.toAddress(prefix, myKey), (Message<byte[]> msg) -> processManagementMessage(msg));
+  protected void onBootstraped(K nextHash) {
+    this.nextKey = nextHash;
+    vertx.eventBus().consumer(IDht.toAddress(prefix, ""), (Message<byte[]> msg) -> processManagementMessage(msg));
+    vertx.eventBus().consumer(IDht.toAddress(prefix, myKey), (Message<byte[]> msg) -> processManagementMessage(msg));
   }
 
   public K getIdentity() {
@@ -68,38 +68,9 @@ public class DataNode<K extends Comparable<K> & Serializable, T extends Serializ
   public <R extends Serializable> void traverse(K start, K end, R identity,
     AsyncFunction<Pair<ExecutionContext<Void, DataNode<K, T>, R>, DataNode<K, T>>, R> f,
     SerializableConsumer<R> handler) {
-    final K key = getIdentity();
-
-    byte[] ser = Dht.<K, T, R>managementMessage((pair, cb) -> {
-      ExecutionContext<DataNode<K, T>, Message<byte[]>, R> c = pair.getValue0();
-      Message<byte[]> msg = pair.getValue1();
-
-      if ((!start.equals(end) && Dht.isResponsible(start, end, c.context().myKey))
-        || Dht.isResponsible(c.context(), start)
-        || Dht.isResponsible(c.context(), end)) {
-        Pair<ExecutionContext<Void, DataNode<K, T>, R>, DataNode<K, T>> p = new Pair<>(
-          new ExecutionContext<Void, DataNode<K, T>, R>(f),
-          pair.getValue0().context());
-        f.apply(p, (R result) -> {
-          msg.reply(result);
-        });
-      }
-
-      if (!key.equals(c.context().myKey)) {
-        String addr = Dht.toAddress(c.context().prefix, c.context().nextKey);
-        c.context().vertx.eventBus().send(addr, c.serialize(), ar -> {
-          if (ar.succeeded()) {
-            msg.reply(ar.result().body());
-          } else {
-            msg.reply(ar.cause());
-          }
-        });
-      } else {
-        msg.reply(identity);
-      }
-    });
-
-    vertx.eventBus().send(Dht.toAddress(prefix, nextKey), ser, (AsyncResult<Message<R>> ar) -> {
+    byte[] ser = IData.<K, T, R> tranverseMessage(myKey, start, end, identity, f, handler);
+    
+    vertx.eventBus().send(IDht.toAddress(prefix, nextKey), ser, (AsyncResult<Message<R>> ar) -> {
       if (handler != null) {
         if (ar.succeeded()) {
           handler.accept(ar.result().body());

@@ -9,30 +9,27 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Random;
+import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.util.Random;
-import java.util.UUID;
-import java.util.function.Supplier;
-import org.javatuples.Pair;
-import vertigo.core.dht.DataNode;
 
 /**
  *
  * @author muhaaa
  */
 @RunWith(VertxUnitRunner.class)
-public class DhtNodeTest {
+public class DataNodeTest {
 
   Vertx vertx;
 
-  public DhtNodeTest() {
+  public DataNodeTest() {
   }
 
   @BeforeClass
@@ -64,9 +61,9 @@ public class DhtNodeTest {
     String value = "Hello World!";
 
     n.join(node -> {
-      node.put(key, value, cb -> {
+      n.put(key, value, cb -> {
       });
-      node.get(key, val -> {
+      n.get(key, val -> {
         context.assertEquals(value, val);
         test.complete();
       });
@@ -82,7 +79,8 @@ public class DhtNodeTest {
 
     new DataNode<>(vertx, "prefix", rand.nextInt(Integer.MAX_VALUE)).join(n1 -> {
       new DataNode<>(vertx, "prefix", rand.nextInt(Integer.MAX_VALUE)).join(n2 -> {
-        new DataNode<>(vertx, "prefix", rand.nextInt(Integer.MAX_VALUE)).join(node -> {
+        DataNode<Integer, String> node = new DataNode<>(vertx, "prefix", rand.nextInt(Integer.MAX_VALUE));
+        node.join(n3 -> {
           node.put(key, value, cb -> {
             node.get(key, val -> {
               context.assertEquals(value, val);
@@ -108,7 +106,8 @@ public class DhtNodeTest {
       rand.nextBytes(bytes);
       new DataNode<>(vertx, "prefix", UUID.nameUUIDFromBytes(bytes).toString()).join(n2 -> {
         rand.nextBytes(bytes);
-        new DataNode<>(vertx, "prefix", UUID.nameUUIDFromBytes(bytes).toString()).join(node -> {
+        DataNode<String, String> node = new DataNode<>(vertx, "prefix", UUID.nameUUIDFromBytes(bytes).toString());
+        node.join(n3 -> {
           node.put(key, value, cb -> {
           });
           node.get(key, val -> {
@@ -130,7 +129,8 @@ public class DhtNodeTest {
 
     new DataNode<>(vertx, "prefix", supply.get()).join(n1 -> {
       new DataNode<>(vertx, "prefix", supply.get()).join(n2 -> {
-        new DataNode<>(vertx, "prefix", supply.get()).join(node -> {
+        DataNode<Double, String> node = new DataNode<>(vertx, "prefix", supply.get());
+        node.join(n3 -> {
           node.put(key, value, cb -> {
           });
           node.get(key, val -> {
@@ -141,7 +141,7 @@ public class DhtNodeTest {
       });
     });
   }
-  
+
   @Test
   public void multiDhtNodesDoubleKeyCallbackNull(TestContext context) {
     Async test = context.async();
@@ -152,7 +152,8 @@ public class DhtNodeTest {
 
     new DataNode<>(vertx, "prefix", supply.get()).join(n1 -> {
       new DataNode<>(vertx, "prefix", supply.get()).join(n2 -> {
-        new DataNode<>(vertx, "prefix", supply.get()).join(node -> {
+        DataNode<Double, String> node = new DataNode<>(vertx, "prefix", supply.get());
+        node.join(n3 -> {
           // No callback for put
           node.put(key, value, null);
           node.get(key, val -> {

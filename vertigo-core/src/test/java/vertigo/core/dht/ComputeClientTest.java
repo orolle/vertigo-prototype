@@ -7,11 +7,14 @@ package vertigo.core.dht;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Random;
+import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.junit.After;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
@@ -26,11 +29,11 @@ import org.junit.runner.RunWith;
  * @author muhaaa
  */
 @RunWith(VertxUnitRunner.class)
-public class ComputeNodeTest {
+public class ComputeClientTest {
 
   Vertx vertx;
 
-  public ComputeNodeTest() {
+  public ComputeClientTest() {
   }
 
   @BeforeClass
@@ -55,6 +58,12 @@ public class ComputeNodeTest {
    *   Tests
    */
   @Test
+  public void testTest(TestContext context) {
+    Async test = context.async();
+    test.complete();
+  }
+
+  @Test
   public void multiComputeNodes(TestContext context) {
     Async test = context.async();
     Random rand = new Random(123456);
@@ -75,14 +84,13 @@ public class ComputeNodeTest {
       assertEquals(msg.body(), value);
       testComplete.accept(null);
     });
-
-    
     
     new ComputeNode<Integer, Integer>(vertx, "prefix", rand.nextInt()).join(n1 -> {
       new ComputeNode<Integer, Integer>(vertx, "prefix", rand.nextInt()).join(n2 -> {
-        ComputeNode<Integer, Integer> exec = new ComputeNode<>(vertx, "prefix", rand.nextInt());
-        exec.join(node -> {
-          exec.execute(rand.nextInt(), dhtNode -> {
+        new ComputeNode<>(vertx, "prefix", rand.nextInt()).join(node -> {
+          ComputeClient<Integer, Integer> client = new ComputeClient<>(vertx, "prefix");
+          
+          client.execute(rand.nextInt(), dhtNode -> {
             dhtNode.getVertx().eventBus().send(addr, value);
           }, t -> {
             assertNull(t);
